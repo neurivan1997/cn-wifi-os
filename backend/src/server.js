@@ -36,6 +36,18 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, message: "Backend CN WiFi funcionando com Supabase" });
 });
 
+app.get("/api/debug/env", (req, res) => {
+  const mp = process.env.MP_ACCESS_TOKEN || "";
+  res.json({
+    ok: true,
+    supabaseUrl: !!process.env.SUPABASE_URL,
+    supabaseKey: !!process.env.SUPABASE_SERVICE_KEY,
+    mpTokenExiste: !!mp,
+    mpTokenInicio: mp ? mp.slice(0, 8) : null,
+    mpTokenTamanho: mp.length
+  });
+});
+
 app.get("/api/planos", async (req, res) => {
   const { data, error } = await supabase
     .from("planos")
