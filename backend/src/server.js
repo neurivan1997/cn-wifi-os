@@ -110,7 +110,7 @@ app.post("/api/pagamentos/pix", async (req, res) => {
     const { planoId } = req.body;
     const emailRecebido = String(req.body?.email || "").trim();
     const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRecebido);
-    const email = emailValido ? emailRecebido : "cliente@cnwifi.com";
+    const email = emailValido ? emailRecebido : "cliente.cnwifi@gmail.com";
 
     const { data: plano, error: planoError } = await supabase
       .from("planos")
