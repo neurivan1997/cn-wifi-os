@@ -141,6 +141,10 @@ app.post("/api/pagamentos/pix", async (req, res) => {
     const mp = await response.json();
 
     if (!response.ok) {
+      console.log("========== MERCADO PAGO ==========");
+      console.log(JSON.stringify(mp, null, 2));
+      console.log("==================================");
+
       return res.status(response.status).json({
         erro: "Erro ao criar pagamento PIX",
         detalhes: mp,
