@@ -1,0 +1,23 @@
+{
+  "name": "cn-wifi-backend",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.0",
+    "better-sqlite3": "^12.11.1",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "mercadopago": "latest",
+    "sqlite3": "latest",
+    "uuid": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "latest"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "senhaAdmin": "1234",
+  "fimPermanencia": "2026-07-08T12:00",
+  "planosAtivos": [
+    "10m",
+    "30m",
+    "6h",
+    "1h",
+    "5m",
+    "24h"
+  ]
+}

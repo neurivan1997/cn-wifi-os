@@ -1,0 +1,139 @@
+import { useMemo, useState } from "react";
+import axios from "axios";
+import "./App.css";
+
+const API_URL = "http://localhost:3001";
+
+const planosBase = [
+  { id: "5m", nome: "5 minutos", minutos: 5, preco: 1 },
+  { id: "10m", nome: "10 minutos", minutos: 10, preco: 2 },
+  { id: "30m", nome: "30 minutos", minutos: 30, preco: 3 },
+  { id: "1h", nome: "1 hora", minutos: 60, preco: 4 },
+  { id: "6h", nome: "6 horas", minutos: 360, preco: 5 },
+  { id: "24h", nome: "24 horas", minutos: 1440, preco: 10 },
+];
+
+function App() {
+  const [fimPermanencia, setFimPermanencia] = useState("");
+  const [pagamento, setPagamento] = useState(null);
+  const [carregando, setCarregando] = useState(false);
+
+  const planosDisponiveis = useMemo(() => {
+    if (!fimPermanencia) return planosBase;
+
+    const fim = new Date(fimPermanencia);
+    const minutosRestantes = Math.floor((fim - new Date()) / 60000);
+
+    return planosBase.filter((plano) => plano.minutos <= minutosRestantes);
+  }, [fimPermanencia]);
+
+  async function comprarPlano(plano) {
+    try {
+      setCarregando(true);
+      setPagamento(null);
+
+      const response = await axios.post(`${API_URL}/api/pagamentos/pix`, {
+        planoId: plano.id,
+        email: "cliente@cnwifi.com",
+      });
+
+      setPagamento(response.data);
+    } catch (error) {
+      alert("Erro ao gerar PIX.");
+      console.error(error);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  return (
+    <main className="container">
+      <section className="card hero">
+        <h1>CN WiFi</h1>
+        <p>Internet temporária rápida, simples e segura.</p>
+      </section>
+
+      <section className="card aviso">
+        <h2>Disponibilidade do ponto</h2>
+
+        <label>Até quando este Wi-Fi ficará disponível?</label>
+        <input
+          type="datetime-local"
+          value={fimPermanencia}
+          onChange={(e) => setFimPermanencia(e.target.value)}
+        />
+
+        {fimPermanencia && (
+          <p>
+            Este ponto ficará disponível até{" "}
+            <strong>{new Date(fimPermanencia).toLocaleString("pt-BR")}</strong>.
+          </p>
+        )}
+      </section>
+
+      <section className="planos">
+        {planosDisponiveis.map((plano) => (
+          <button
+            key={plano.id}
+            className="plano"
+            onClick={() => comprarPlano(plano)}
+            disabled={carregando}
+          >
+            <span>{plano.nome}</span>
+            <strong>
+              {plano.preco.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </strong>
+          </button>
+        ))}
+      </section>
+
+      {carregando && (
+        <section className="card pagamento">
+          Gerando PIX...
+        </section>
+      )}
+
+      {pagamento && (
+        <section className="card pagamento">
+          <h2>Pagamento PIX</h2>
+
+          <p>Plano: {pagamento.plano.nome}</p>
+
+          <p>
+            Valor:{" "}
+            <strong>
+              {pagamento.plano.preco.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </strong>
+          </p>
+
+          <img
+            className="qr"
+            src={`data:image/png;base64,${pagamento.qrCodeBase64}`}
+            alt="QR Code PIX"
+          />
+
+          <textarea readOnly value={pagamento.qrCode} />
+
+          <button
+            className="confirmar"
+            onClick={() => navigator.clipboard.writeText(pagamento.qrCode)}
+          >
+            Copiar PIX
+          </button>
+
+          <a className="link" href={pagamento.ticketUrl} target="_blank">
+            Abrir página de pagamento
+          </a>
+        </section>
+      )}
+    </main>
+  );
+}
+
+export default App;
