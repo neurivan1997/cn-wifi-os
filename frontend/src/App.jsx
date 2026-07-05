@@ -83,22 +83,39 @@ function App() {
   async function simularLiberacao() {
     try {
       setCarregando(true);
-      setMensagem("Liberando acesso...");
+      setMensagem("Verificando pagamento...");
 
-      await axios.post(`${API_URL}/api/admin/pagamentos/${pagamento.pagamentoId}/aprovar`);
+      const { data } = await axios.get(`${API_URL}/api/pagamentos/${pagamento.pagamentoId}/status`);
 
-      const clienteResp = await axios.get(`${API_URL}/api/opennds/cliente-atual`);
-      const mac = clienteResp.data.cliente.mac;
-
-      await axios.post(`${API_URL}/api/opennds/auth`, { mac });
+      if (!data.aprovado) {
+        setMensagem("Pagamento ainda não aprovado. Aguarde alguns segundos e tente novamente.");
+        return;
+      }
 
       setPagamento({
         ...pagamento,
         status: "approved",
-        voucher: "LIBERADO",
+        voucher: data.voucher || "LIBERADO",
       });
 
-      setMensagem("Acesso liberado. Você já pode usar a internet.");
+      setMensagem("Pagamento aprovado. Liberando internet...");
+
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = "http://login.cnwifi.local/login";
+
+      const user = document.createElement("input");
+      user.name = "username";
+      user.value = "cnwifi";
+
+      const pass = document.createElement("input");
+      pass.name = "password";
+      pass.value = "2529";
+
+      form.appendChild(user);
+      form.appendChild(pass);
+      document.body.appendChild(form);
+      form.submit();
     } catch (error) {
       alert(error.response?.data?.erro || error.message || "Erro ao liberar acesso.");
     } finally {
@@ -320,7 +337,7 @@ function App() {
               </button>
 
               <button className="confirmar" onClick={simularLiberacao}>
-                Simular pagamento e liberar acesso
+                Verificar pagamento e liberar internet
               </button>
             </>
           )}
