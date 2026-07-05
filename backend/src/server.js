@@ -335,6 +335,66 @@ app.post("/api/admin/clientes/limpar", async (req, res) => {
   res.json({ ok: true, mensagem: "Limpeza via MikroTik será ativada na próxima etapa." });
 });
 
+
+app.post("/api/solicitacoes-liberacao", async (req, res) => {
+  try {
+    const { pagamentoId, planoId, clienteIp, clienteMac, observacao } = req.body;
+
+    if (!pagamentoId) {
+      return res.status(400).json({ ok: false, erro: "pagamentoId obrigatório." });
+    }
+
+    const { data, error } = await supabase
+      .from("solicitacoes_liberacao")
+      .insert({
+        pagamento_id: String(pagamentoId),
+        plano_id: planoId || null,
+        cliente_ip: clienteIp || null,
+        cliente_mac: clienteMac || null,
+        observacao: observacao || "Cliente informou que já pagou.",
+        status: "aguardando"
+      })
+      .select()
+      .single();
+
+    if (error) return res.status(500).json({ ok: false, erro: error.message });
+
+    res.json({ ok: true, solicitacao: data });
+  } catch (error) {
+    res.status(500).json({ ok: false, erro: error.message });
+  }
+});
+
+app.get("/api/admin/solicitacoes-liberacao", async (req, res) => {
+  const { data, error } = await supabase
+    .from("solicitacoes_liberacao")
+    .select("*")
+    .order("id", { ascending: false })
+    .limit(100);
+
+  if (error) return res.status(500).json({ ok: false, erro: error.message });
+
+  res.json({ ok: true, solicitacoes: data });
+});
+
+app.post("/api/admin/solicitacoes-liberacao/:id/marcar-liberada", async (req, res) => {
+  const { id } = req.params;
+
+  const { data, error } = await supabase
+    .from("solicitacoes_liberacao")
+    .update({
+      status: "liberada",
+      atualizado_em: new Date().toISOString()
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) return res.status(500).json({ ok: false, erro: error.message });
+
+  res.json({ ok: true, solicitacao: data });
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`CN WiFi Backend Supabase rodando em http://localhost:${PORT}`);
