@@ -395,6 +395,52 @@ app.post("/api/admin/solicitacoes-liberacao/:id/marcar-liberada", async (req, re
   res.json({ ok: true, solicitacao: data });
 });
 
+
+app.get("/api/admin/dashboard", async (req, res) => {
+  try {
+    const { data: pagamentos, error } = await supabase
+      .from("pagamentos")
+      .select("*")
+      .order("id", { ascending: false })
+      .limit(500);
+
+    if (error) return res.status(500).json({ ok: false, erro: error.message });
+
+    const agora = new Date();
+    const inicioHoje = new Date(agora); inicioHoje.setHours(0,0,0,0);
+    const inicioSemana = new Date(agora); inicioSemana.setDate(agora.getDate() - 7);
+    const inicioMes = new Date(agora); inicioMes.setDate(1); inicioMes.setHours(0,0,0,0);
+
+    const pagos = (pagamentos || []).filter(p => p.status === "approved");
+
+    const soma = (lista) => lista.reduce((t, p) => t + Number(p.valor || 0), 0);
+    const porData = (data) => pagos.filter(p => new Date(p.aprovado_em || p.criado_em) >= data);
+
+    const planosVendidos = {};
+    for (const p of pagos) {
+      const nome = p.plano_nome || p.plano_id || "Plano";
+      planosVendidos[nome] = (planosVendidos[nome] || 0) + 1;
+    }
+
+    res.json({
+      ok: true,
+      resumo: {
+        pagamentosHoje: porData(inicioHoje).length,
+        receitaHoje: soma(porData(inicioHoje)),
+        receitaSemana: soma(porData(inicioSemana)),
+        receitaMes: soma(porData(inicioMes)),
+        receitaTotal: soma(pagos),
+        pagamentosTotal: pagos.length,
+        pendentes: (pagamentos || []).filter(p => p.status !== "approved").length
+      },
+      planosVendidos,
+      ultimosPagamentos: pagamentos || []
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, erro: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`CN WiFi Backend Supabase rodando em http://localhost:${PORT}`);
