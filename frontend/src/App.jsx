@@ -240,7 +240,8 @@ function App() {
       } catch {}
     }
   }, []);
-\n  if (!config) return <main className="container">Carregando...</main>;
+
+  if (!config) return <main className="container">Carregando...</main>;
 
   if (isAdmin) {
     if (!logado) {
