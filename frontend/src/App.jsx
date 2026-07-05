@@ -56,7 +56,7 @@ function App() {
 
       const { data } = await axios.post(`${API_URL}/api/pagamentos/pix`, {
         planoId: plano.id,
-        email: "cliente@cnwifi.local",
+        email: "cliente.cnwifi@gmail.com",
       });
 
       setPagamento(data);
