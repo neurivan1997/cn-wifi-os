@@ -64,24 +64,12 @@ function App() {
             voucher: data.voucher || "LIBERADO",
           }));
 
-          setMensagem("Pagamento aprovado. Liberando internet...");
+          localStorage.removeItem("cnwifi_pagamento");
+          setMensagem("Pagamento aprovado. Clique em Liberar internet agora.");
 
-          const form = document.createElement("form");
-          form.method = "POST";
-          form.action = "http://login.cnwifi.local/login";
-
-          const user = document.createElement("input");
-          user.name = "username";
-          user.value = "cnwifi";
-
-          const pass = document.createElement("input");
-          pass.name = "password";
-          pass.value = "2529";
-
-          form.appendChild(user);
-          form.appendChild(pass);
-          document.body.appendChild(form);
-          form.submit();
+          setTimeout(() => {
+            liberarInternetMikrotik();
+          }, 1500);
         }
       } catch (e) {
         console.error("Erro ao verificar pagamento:", e);
@@ -90,6 +78,34 @@ function App() {
 
     return () => clearInterval(timer);
   }, [pagamento?.pagamentoId, pagamento?.status]);
+
+
+  function liberarInternetMikrotik() {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "http://login.cnwifi.local/login";
+
+    const user = document.createElement("input");
+    user.type = "hidden";
+    user.name = "username";
+    user.value = "cnwifi";
+
+    const pass = document.createElement("input");
+    pass.type = "hidden";
+    pass.name = "password";
+    pass.value = "2529";
+
+    const dst = document.createElement("input");
+    dst.type = "hidden";
+    dst.name = "dst";
+    dst.value = "http://neverssl.com/";
+
+    form.appendChild(user);
+    form.appendChild(pass);
+    form.appendChild(dst);
+    document.body.appendChild(form);
+    form.submit();
+  }
 
   async function comprarPlano(plano) {
     try {
@@ -103,8 +119,9 @@ function App() {
       });
 
       setPagamento(data);
+      localStorage.setItem("cnwifi_pagamento", JSON.stringify(data));
 
-      setMensagem("PIX gerado. Faça o pagamento para liberar o acesso.");
+      setMensagem("PIX gerado. Não feche esta tela até liberar o acesso.");
 
       setTimeout(() => {
         document.querySelector(".pagamento")?.scrollIntoView({ behavior: "smooth" });
@@ -213,7 +230,17 @@ function App() {
     await carregarSolicitacoes();
   }
 
-  if (!config) return <main className="container">Carregando...</main>;
+
+  useEffect(() => {
+    const salvo = localStorage.getItem("cnwifi_pagamento");
+    if (salvo && !pagamento) {
+      try {
+        setPagamento(JSON.parse(salvo));
+        setMensagem("Pagamento em andamento. Aguarde a aprovação ou solicite liberação.");
+      } catch {}
+    }
+  }, []);
+\n  if (!config) return <main className="container">Carregando...</main>;
 
   if (isAdmin) {
     if (!logado) {
@@ -416,6 +443,12 @@ function App() {
               })}
             </strong>
           </p>
+
+          {pagamento.status === "approved" && (
+            <button className="confirmar" onClick={liberarInternetMikrotik}>
+              Liberar internet agora
+            </button>
+          )}
 
           {pagamento.status !== "approved" && (
             <>
