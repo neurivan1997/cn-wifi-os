@@ -1,146 +1,266 @@
+:root {
+  --bg: #07111f;
+  --bg2: #0b1728;
+  --card: rgba(14, 27, 46, .92);
+  --card2: rgba(10, 22, 38, .98);
+  --border: rgba(92, 140, 255, .18);
+  --blue: #1769ff;
+  --cyan: #35c7ff;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --purple: #8b5cf6;
+  --red: #ef4444;
+  --text: #f8fafc;
+  --muted: #a8b3c7;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #0f172a;
-  color: #ffffff;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(23,105,255,.25), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(53,199,255,.12), transparent 35%),
+    linear-gradient(135deg, #050b14, var(--bg));
+  color: var(--text);
+  font-family: Inter, system-ui, Arial, sans-serif;
 }
 
 .container {
-  max-width: 520px;
+  width: min(1180px, 94vw);
   margin: 0 auto;
-  padding: 18px;
+  padding: 28px 0 60px;
 }
 
 .card {
-  background: #111827;
-  border: 1px solid #1f2937;
-  border-radius: 18px;
-  padding: 18px;
-  margin-bottom: 16px;
+  background: linear-gradient(180deg, var(--card), var(--card2));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 22px;
+  margin-bottom: 18px;
+  box-shadow: 0 18px 60px rgba(0,0,0,.28);
+  backdrop-filter: blur(14px);
 }
 
 .hero {
   text-align: center;
+  padding: 28px 22px;
 }
 
 .hero h1 {
-  font-size: 42px;
-  margin: 0 0 8px;
+  margin: 0;
+  font-size: clamp(34px, 5vw, 56px);
+  letter-spacing: -1.5px;
+  background: linear-gradient(90deg, #fff, var(--cyan), var(--blue));
+  -webkit-background-clip: text;
+  color: transparent;
 }
 
 .hero p {
-  color: #cbd5e1;
-  margin: 0;
+  color: var(--muted);
+  font-size: 18px;
 }
 
-.aviso h2,
-.pagamento h2 {
+h2, h3 {
   margin-top: 0;
+  color: #fff;
 }
 
-label {
-  display: block;
-  margin-bottom: 8px;
-  color: #cbd5e1;
-}
-
-input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: none;
-  font-size: 16px;
-  margin-bottom: 12px;
+p {
+  color: #dce7fb;
 }
 
 .planos {
   display: grid;
-  gap: 12px;
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.plano, button, .confirmar {
+  border: 0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  color: #03111f;
+  background: linear-gradient(135deg, #22c55e, #3bff91);
+  box-shadow: 0 10px 30px rgba(34,197,94,.22);
+  transition: .2s ease;
 }
 
 .plano {
-  width: 100%;
-  border: none;
-  border-radius: 18px;
-  background: #22c55e;
-  color: #052e16;
-  padding: 18px;
-  font-size: 18px;
-  font-weight: bold;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  cursor: pointer;
+  font-size: 18px;
 }
 
-.plano:hover {
-  opacity: 0.9;
+button:hover, .plano:hover, .confirmar:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
 }
 
-.pix-box {
-  background: #ffffff;
-  color: #111827;
-  padding: 30px;
-  border-radius: 16px;
-  text-align: center;
-  margin: 16px 0;
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
 }
 
 .confirmar {
   width: 100%;
-  border: none;
-  border-radius: 14px;
-  background: #38bdf8;
-  color: #082f49;
-  padding: 16px;
-  font-size: 17px;
-  font-weight: bold;
-  cursor: pointer;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #1684ff, #35c7ff);
 }
 
-.erro {
-  color: #fecaca;
-}
-.qr {
+input, textarea {
   width: 100%;
-  max-width: 280px;
-  display: block;
-  margin: 16px auto;
-  background: white;
-  padding: 12px;
-  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px;
+  font-size: 16px;
+  outline: none;
 }
 
 textarea {
-  width: 100%;
-  min-height: 120px;
-  border-radius: 12px;
-  padding: 12px;
-  font-size: 14px;
-  resize: none;
+  min-height: 110px;
+  resize: vertical;
+  font-family: monospace;
 }
 
-.link {
+.qr {
   display: block;
-  text-align: center;
-  margin-top: 14px;
-  color: #38bdf8;
-  font-weight: bold;
+  width: min(300px, 90%);
+  margin: 20px auto;
+  background: white;
+  border-radius: 20px;
+  padding: 12px;
 }
 
-.voucher-box {
-  background: #22c55e;
-  color: #052e16;
-  padding: 16px;
-  border-radius: 16px;
+.pagamento {
   text-align: center;
-  margin: 16px 0;
 }
 
-.voucher-box strong {
-  font-size: 24px;
-  letter-spacing: 2px;
+/* ADMIN */
+.container:has(.hero h1) {
+  animation: fadeIn .25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+section.card:has(h2),
+section.card:has(h3) {
+  position: relative;
+  overflow: hidden;
+}
+
+section.card:has(h2)::before,
+section.card:has(h3)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(53,199,255,.08), transparent 45%);
+  pointer-events: none;
+}
+
+section.card div[style*="grid"] .card {
+  min-height: 116px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(23,105,255,.14), rgba(10,22,38,.95));
+}
+
+section.card div[style*="grid"] .card strong {
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+section.card div[style*="grid"] .card p {
+  margin: 8px 0 0;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.card div[style*="border"] {
+  background: rgba(8, 19, 34, .82) !important;
+  border: 1px solid rgba(92,140,255,.16) !important;
+  box-shadow: 0 8px 26px rgba(0,0,0,.18);
+}
+
+.card div[style*="border"] p {
+  margin: 6px 0;
+}
+
+.card div[style*="border"] strong {
+  color: #fff;
+}
+
+.card h2,
+.card h3 {
+  text-align: center;
+  letter-spacing: -.4px;
+}
+
+.aviso {
+  border-color: rgba(245,158,11,.28);
+}
+
+.aviso h2 {
+  color: #fbbf24;
+}
+
+button:nth-of-type(odd).confirmar {
+  background: linear-gradient(135deg, #1769ff, #35c7ff);
+}
+
+button:nth-of-type(even).confirmar {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+  color: #fff;
+}
+
+.card p:has(strong) strong {
+  color: #fff;
+}
+
+/* status visual */
+p:has(strong) {
+  font-size: 16px;
+}
+
+@media (min-width: 900px) {
+  .planos {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .container {
+    padding-top: 34px;
+  }
+}
+
+@media (max-width: 700px) {
+  .container {
+    width: 94vw;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .plano {
+    font-size: 16px;
+  }
 }

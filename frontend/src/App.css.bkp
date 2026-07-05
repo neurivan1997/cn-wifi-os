@@ -1,0 +1,146 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.container {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.hero {
+  text-align: center;
+}
+
+.hero h1 {
+  font-size: 42px;
+  margin: 0 0 8px;
+}
+
+.hero p {
+  color: #cbd5e1;
+  margin: 0;
+}
+
+.aviso h2,
+.pagamento h2 {
+  margin-top: 0;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.planos {
+  display: grid;
+  gap: 12px;
+}
+
+.plano {
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  background: #22c55e;
+  color: #052e16;
+  padding: 18px;
+  font-size: 18px;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.plano:hover {
+  opacity: 0.9;
+}
+
+.pix-box {
+  background: #ffffff;
+  color: #111827;
+  padding: 30px;
+  border-radius: 16px;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.confirmar {
+  width: 100%;
+  border: none;
+  border-radius: 14px;
+  background: #38bdf8;
+  color: #082f49;
+  padding: 16px;
+  font-size: 17px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.erro {
+  color: #fecaca;
+}
+.qr {
+  width: 100%;
+  max-width: 280px;
+  display: block;
+  margin: 16px auto;
+  background: white;
+  padding: 12px;
+  border-radius: 16px;
+}
+
+textarea {
+  width: 100%;
+  min-height: 120px;
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 14px;
+  resize: none;
+}
+
+.link {
+  display: block;
+  text-align: center;
+  margin-top: 14px;
+  color: #38bdf8;
+  font-weight: bold;
+}
+
+.voucher-box {
+  background: #22c55e;
+  color: #052e16;
+  padding: 16px;
+  border-radius: 16px;
+  text-align: center;
+  margin: 16px 0;
+}
+
+.voucher-box strong {
+  font-size: 24px;
+  letter-spacing: 2px;
+}
