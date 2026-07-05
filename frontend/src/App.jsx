@@ -49,6 +49,48 @@ function App() {
     return planos;
   }, [config]);
 
+
+  useEffect(() => {
+    if (!pagamento?.pagamentoId || pagamento.status === "approved") return;
+
+    const timer = setInterval(async () => {
+      try {
+        const { data } = await axios.get(`${API_URL}/api/pagamentos/${pagamento.pagamentoId}/status`);
+
+        if (data.aprovado || data.status === "approved") {
+          setPagamento((atual) => ({
+            ...atual,
+            status: "approved",
+            voucher: data.voucher || "LIBERADO",
+          }));
+
+          setMensagem("Pagamento aprovado. Liberando internet...");
+
+          const form = document.createElement("form");
+          form.method = "POST";
+          form.action = "http://login.cnwifi.local/login";
+
+          const user = document.createElement("input");
+          user.name = "username";
+          user.value = "cnwifi";
+
+          const pass = document.createElement("input");
+          pass.name = "password";
+          pass.value = "2529";
+
+          form.appendChild(user);
+          form.appendChild(pass);
+          document.body.appendChild(form);
+          form.submit();
+        }
+      } catch (e) {
+        console.error("Erro ao verificar pagamento:", e);
+      }
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [pagamento?.pagamentoId, pagamento?.status]);
+
   async function comprarPlano(plano) {
     try {
       setCarregando(true);
