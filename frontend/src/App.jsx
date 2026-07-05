@@ -22,7 +22,8 @@ function App() {
   const [pagamento, setPagamento] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [mensagem, setMensagem] = useState("");
-  const [clientes, setClientes] = useState([]);\n  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [solicitacoes, setSolicitacoes] = useState([]);
 
   async function carregarConfig() {
     const { data } = await axios.get(`${API_URL}/api/config`);
