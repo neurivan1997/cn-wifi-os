@@ -24,6 +24,7 @@ function App() {
   const [mensagem, setMensagem] = useState("");
   const [clientes, setClientes] = useState([]);
   const [solicitacoes, setSolicitacoes] = useState([]);
+  const [dashboard, setDashboard] = useState(null);
 
   async function carregarConfig() {
     const { data } = await axios.get(`${API_URL}/api/config`);
@@ -225,6 +226,25 @@ function App() {
     setSolicitacoes(data.solicitacoes || []);
   }
 
+  async function carregarDashboard() {
+    const { data } = await axios.get(`${API_URL}/api/admin/dashboard`);
+    setDashboard(data);
+  }
+
+  function moeda(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    });
+  }
+
+  function dataBR(valor) {
+    if (!valor) return "-";
+    return new Date(valor).toLocaleString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    });
+  }
+
   async function marcarSolicitacaoLiberada(id) {
     await axios.post(`${API_URL}/api/admin/solicitacoes-liberacao/${id}/marcar-liberada`);
     await carregarSolicitacoes();
@@ -317,6 +337,43 @@ function App() {
 
         <section className="card aviso">
           <h2>Clientes conectados</h2>
+
+          <button className="confirmar" onClick={carregarDashboard}>
+            Atualizar dashboard
+          </button>
+
+          {dashboard && (
+            <div style={{ marginTop: 16 }}>
+              <h2>Dashboard financeiro</h2>
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                <div className="card"><strong>Receita hoje</strong><p>{moeda(dashboard.resumo.receitaHoje)}</p></div>
+                <div className="card"><strong>Receita semana</strong><p>{moeda(dashboard.resumo.receitaSemana)}</p></div>
+                <div className="card"><strong>Receita mês</strong><p>{moeda(dashboard.resumo.receitaMes)}</p></div>
+                <div className="card"><strong>Receita total</strong><p>{moeda(dashboard.resumo.receitaTotal)}</p></div>
+                <div className="card"><strong>Pagamentos hoje</strong><p>{dashboard.resumo.pagamentosHoje}</p></div>
+                <div className="card"><strong>Pagamentos pagos</strong><p>{dashboard.resumo.pagamentosTotal}</p></div>
+                <div className="card"><strong>Pendentes</strong><p>{dashboard.resumo.pendentes}</p></div>
+              </div>
+
+              <h3>Planos vendidos</h3>
+              {Object.entries(dashboard.planosVendidos || {}).map(([nome, qtd]) => (
+                <p key={nome}><strong>{nome}:</strong> {qtd}</p>
+              ))}
+
+              <h3>Últimos pagamentos</h3>
+              {(dashboard.ultimosPagamentos || []).slice(0, 15).map((p) => (
+                <div key={p.id} style={{ marginTop: 10, padding: 12, border: "1px solid #243044", borderRadius: 12, textAlign: "left" }}>
+                  <p><strong>ID:</strong> {p.mercado_pago_id}</p>
+                  <p><strong>Plano:</strong> {p.plano_nome}</p>
+                  <p><strong>Valor:</strong> {moeda(p.valor)}</p>
+                  <p><strong>Status:</strong> {p.status}</p>
+                  <p><strong>Criado:</strong> {dataBR(p.criado_em)}</p>
+                  <p><strong>Aprovado:</strong> {dataBR(p.aprovado_em)}</p>
+                  <p><strong>Expira:</strong> {dataBR(p.expira_em)}</p>
+                </div>
+              ))}
+            </div>
+          )}
 
           <button className="confirmar" onClick={carregarClientes}>
             Atualizar clientes
