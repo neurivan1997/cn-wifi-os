@@ -22,7 +22,7 @@ function App() {
   const [pagamento, setPagamento] = useState(null);
   const [carregando, setCarregando] = useState(false);
   const [mensagem, setMensagem] = useState("");
-  const [clientes, setClientes] = useState([]);
+  const [clientes, setClientes] = useState([]);\n  const [solicitacoes, setSolicitacoes] = useState([]);
 
   async function carregarConfig() {
     const { data } = await axios.get(`${API_URL}/api/config`);
@@ -145,6 +145,31 @@ function App() {
     await carregarClientes();
   }
 
+  async function solicitarLiberacao() {
+    if (!pagamento?.pagamentoId) {
+      alert("Gere um pagamento primeiro.");
+      return;
+    }
+
+    await axios.post(`${API_URL}/api/solicitacoes-liberacao`, {
+      pagamentoId: pagamento.pagamentoId,
+      planoId: pagamento.plano?.id,
+      observacao: "Cliente informou que já pagou e pediu liberação."
+    });
+
+    alert("Solicitação enviada. Aguarde a liberação.");
+  }
+
+  async function carregarSolicitacoes() {
+    const { data } = await axios.get(`${API_URL}/api/admin/solicitacoes-liberacao`);
+    setSolicitacoes(data.solicitacoes || []);
+  }
+
+  async function marcarSolicitacaoLiberada(id) {
+    await axios.post(`${API_URL}/api/admin/solicitacoes-liberacao/${id}/marcar-liberada`);
+    await carregarSolicitacoes();
+  }
+
   if (!config) return <main className="container">Carregando...</main>;
 
   if (isAdmin) {
@@ -225,6 +250,36 @@ function App() {
           <button className="confirmar" onClick={carregarClientes}>
             Atualizar clientes
           </button>
+
+          <button className="confirmar" onClick={carregarSolicitacoes}>
+            Ver solicitações de liberação
+          </button>
+
+          {solicitacoes.map((sol) => (
+            <div
+              key={sol.id}
+              style={{
+                marginTop: 12,
+                padding: 12,
+                border: "1px solid #243044",
+                borderRadius: 12,
+                textAlign: "left"
+              }}
+            >
+              <p><strong>Solicitação:</strong> #{sol.id}</p>
+              <p><strong>Pagamento:</strong> {sol.pagamento_id}</p>
+              <p><strong>Plano:</strong> {sol.plano_id}</p>
+              <p><strong>Status:</strong> {sol.status}</p>
+              <p><strong>Data:</strong> {new Date(sol.criado_em).toLocaleString("pt-BR")}</p>
+
+              <button
+                className="confirmar"
+                onClick={() => marcarSolicitacaoLiberada(sol.id)}
+              >
+                Marcar como liberada
+              </button>
+            </div>
+          ))}
 
           <button className="confirmar" onClick={limparClientes}>
             Desconectar todos
@@ -338,6 +393,10 @@ function App() {
 
               <button className="confirmar" onClick={simularLiberacao}>
                 Verificar pagamento e liberar internet
+              </button>
+
+              <button className="confirmar" onClick={solicitarLiberacao}>
+                Já paguei, solicitar liberação
               </button>
             </>
           )}
