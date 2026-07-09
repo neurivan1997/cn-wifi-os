@@ -26,18 +26,54 @@ function App() {
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [dashboard, setDashboard] = useState(null);
 
+  const agoraBR = new Date().toLocaleString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+  });
+
   async function carregarConfig() {
     const { data } = await axios.get(`${API_URL}/api/config`);
     setConfig(data);
+  }
+
+  async function carregarDashboard() {
+    const { data } = await axios.get(`${API_URL}/api/admin/dashboard`);
+    setDashboard(data);
+  }
+
+  async function carregarClientes() {
+    const { data } = await axios.get(`${API_URL}/api/admin/clientes`);
+    setClientes(data.clientes || []);
+  }
+
+  async function carregarSolicitacoes() {
+    const { data } = await axios.get(`${API_URL}/api/admin/solicitacoes-liberacao`);
+    setSolicitacoes(data.solicitacoes || []);
   }
 
   useEffect(() => {
     carregarConfig();
   }, []);
 
+  useEffect(() => {
+    if (isAdmin && logado) {
+      carregarDashboard();
+      carregarClientes();
+      carregarSolicitacoes();
+    }
+  }, [isAdmin, logado]);
+
+  useEffect(() => {
+    const salvo = localStorage.getItem("cnwifi_pagamento");
+    if (salvo && !pagamento && !isAdmin) {
+      try {
+        setPagamento(JSON.parse(salvo));
+        setMensagem("Pagamento em andamento. Não feche esta tela.");
+      } catch {}
+    }
+  }, []);
+
   const planosDisponiveis = useMemo(() => {
     if (!config) return [];
-
     let planos = planosBase.filter((p) => config.planosAtivos?.includes(p.id));
 
     if (config.fimPermanencia) {
@@ -50,186 +86,35 @@ function App() {
     return planos;
   }, [config]);
 
-
   useEffect(() => {
     if (!pagamento?.pagamentoId || pagamento.status === "approved") return;
 
     const timer = setInterval(async () => {
       try {
-        const { data } = await axios.get(`${API_URL}/api/pagamentos/${pagamento.pagamentoId}/status`);
+        const { data } = await axios.get(
+          `${API_URL}/api/pagamentos/${pagamento.pagamentoId}/status`
+        );
 
         if (data.aprovado || data.status === "approved") {
-          setPagamento((atual) => ({
-            ...atual,
+          const atualizado = {
+            ...pagamento,
             status: "approved",
             voucher: data.voucher || "LIBERADO",
-          }));
+          };
 
+          setPagamento(atualizado);
           localStorage.removeItem("cnwifi_pagamento");
-          setMensagem("Pagamento aprovado. Clique em Liberar internet agora.");
+          setMensagem("Pagamento aprovado. Liberando internet...");
 
-          setTimeout(() => {
-            liberarInternetMikrotik();
-          }, 1500);
+          setTimeout(() => liberarInternetMikrotik(), 1500);
         }
-      } catch (e) {
-        console.error("Erro ao verificar pagamento:", e);
+      } catch (error) {
+        console.error("Erro ao verificar pagamento:", error);
       }
     }, 5000);
 
     return () => clearInterval(timer);
   }, [pagamento?.pagamentoId, pagamento?.status]);
-
-
-  function liberarInternetMikrotik() {
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "http://login.cnwifi.local/login";
-
-    const user = document.createElement("input");
-    user.type = "hidden";
-    user.name = "username";
-    user.value = "cnwifi";
-
-    const pass = document.createElement("input");
-    pass.type = "hidden";
-    pass.name = "password";
-    pass.value = "2529";
-
-    const dst = document.createElement("input");
-    dst.type = "hidden";
-    dst.name = "dst";
-    dst.value = "http://neverssl.com/";
-
-    form.appendChild(user);
-    form.appendChild(pass);
-    form.appendChild(dst);
-    document.body.appendChild(form);
-    form.submit();
-  }
-
-  async function comprarPlano(plano) {
-    try {
-      setCarregando(true);
-      setMensagem("");
-      setPagamento(null);
-
-      const { data } = await axios.post(`${API_URL}/api/pagamentos/pix`, {
-        planoId: plano.id,
-        email: "cliente.cnwifi@gmail.com",
-      });
-
-      setPagamento(data);
-      localStorage.setItem("cnwifi_pagamento", JSON.stringify(data));
-
-      setMensagem("PIX gerado. Não feche esta tela até liberar o acesso.");
-
-      setTimeout(() => {
-        document.querySelector(".pagamento")?.scrollIntoView({ behavior: "smooth" });
-      }, 200);
-    } catch (error) {
-      alert(
-        JSON.stringify(
-          error.response?.data || { erro: error.message },
-          null,
-          2
-        )
-      );
-      console.error("ERRO PIX:", error);
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  async function simularLiberacao() {
-    try {
-      setCarregando(true);
-      setMensagem("Verificando pagamento...");
-
-      const { data } = await axios.get(`${API_URL}/api/pagamentos/${pagamento.pagamentoId}/status`);
-
-      if (!data.aprovado) {
-        setMensagem("Pagamento ainda não aprovado. Aguarde alguns segundos e tente novamente.");
-        return;
-      }
-
-      setPagamento({
-        ...pagamento,
-        status: "approved",
-        voucher: data.voucher || "LIBERADO",
-      });
-
-      setMensagem("Pagamento aprovado. Liberando internet...");
-
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = "http://login.cnwifi.local/login";
-
-      const user = document.createElement("input");
-      user.name = "username";
-      user.value = "cnwifi";
-
-      const pass = document.createElement("input");
-      pass.name = "password";
-      pass.value = "2529";
-
-      form.appendChild(user);
-      form.appendChild(pass);
-      document.body.appendChild(form);
-      form.submit();
-    } catch (error) {
-      alert(error.response?.data?.erro || error.message || "Erro ao liberar acesso.");
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  async function salvarAdmin() {
-    await axios.put(`${API_URL}/api/config`, config);
-    alert("Configuração salva.");
-    carregarConfig();
-  }
-
-  async function carregarClientes() {
-    const { data } = await axios.get(`${API_URL}/api/admin/clientes`);
-    setClientes(data.clientes || []);
-  }
-
-  async function desconectarCliente(mac) {
-    await axios.post(`${API_URL}/api/admin/clientes/desconectar`, { mac });
-    await carregarClientes();
-  }
-
-  async function limparClientes() {
-    if (!confirm("Desconectar todos os clientes?")) return;
-    await axios.post(`${API_URL}/api/admin/clientes/limpar`);
-    await carregarClientes();
-  }
-
-  async function solicitarLiberacao() {
-    if (!pagamento?.pagamentoId) {
-      alert("Gere um pagamento primeiro.");
-      return;
-    }
-
-    await axios.post(`${API_URL}/api/solicitacoes-liberacao`, {
-      pagamentoId: pagamento.pagamentoId,
-      planoId: pagamento.plano?.id,
-      observacao: "Cliente informou que já pagou e pediu liberação."
-    });
-
-    alert("Solicitação enviada. Aguarde a liberação.");
-  }
-
-  async function carregarSolicitacoes() {
-    const { data } = await axios.get(`${API_URL}/api/admin/solicitacoes-liberacao`);
-    setSolicitacoes(data.solicitacoes || []);
-  }
-
-  async function carregarDashboard() {
-    const { data } = await axios.get(`${API_URL}/api/admin/dashboard`);
-    setDashboard(data);
-  }
 
   function moeda(valor) {
     return Number(valor || 0).toLocaleString("pt-BR", {
@@ -245,297 +130,331 @@ function App() {
     });
   }
 
-  async function marcarSolicitacaoLiberada(id) {
-    await axios.post(`${API_URL}/api/admin/solicitacoes-liberacao/${id}/marcar-liberada`);
-    await carregarSolicitacoes();
+  function liberarInternetMikrotik() {
+    window.location.href =
+      "http://login.cnwifi.local/login?username=cnwifi&password=2529&dst=http://neverssl.com";
   }
 
+  async function comprarPlano(plano) {
+    try {
+      setCarregando(true);
+      setMensagem("");
+      setPagamento(null);
 
-  useEffect(() => {
-    const salvo = localStorage.getItem("cnwifi_pagamento");
-    if (salvo && !pagamento) {
-      try {
-        setPagamento(JSON.parse(salvo));
-        setMensagem("Pagamento em andamento. Aguarde a aprovação ou solicite liberação.");
-      } catch {}
+      const { data } = await axios.post(`${API_URL}/api/pagamentos/pix`, {
+        planoId: plano.id,
+        email: "cliente.cnwifi@gmail.com",
+      });
+
+      setPagamento(data);
+      localStorage.setItem("cnwifi_pagamento", JSON.stringify(data));
+      setMensagem("PIX gerado. Não feche esta tela até a liberação.");
+    } catch (error) {
+      alert(JSON.stringify(error.response?.data || { erro: error.message }, null, 2));
+    } finally {
+      setCarregando(false);
     }
-  }, []);
+  }
 
-  if (!config) return <main className="container">Carregando...</main>;
+  async function verificarPagamento() {
+    if (!pagamento?.pagamentoId) return;
+
+    setCarregando(true);
+    try {
+      const { data } = await axios.get(
+        `${API_URL}/api/pagamentos/${pagamento.pagamentoId}/status`
+      );
+
+      if (!data.aprovado) {
+        setMensagem("Pagamento ainda não aprovado. Aguarde alguns segundos.");
+        return;
+      }
+
+      setPagamento({ ...pagamento, status: "approved", voucher: data.voucher });
+      localStorage.removeItem("cnwifi_pagamento");
+      setMensagem("Pagamento aprovado. Clique em liberar internet.");
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  async function solicitarLiberacao() {
+    if (!pagamento?.pagamentoId) {
+      alert("Gere um pagamento primeiro.");
+      return;
+    }
+
+    await axios.post(`${API_URL}/api/solicitacoes-liberacao`, {
+      pagamentoId: pagamento.pagamentoId,
+      planoId: pagamento.plano?.id,
+      observacao: "Cliente informou que já pagou e pediu liberação.",
+    });
+
+    alert("Solicitação enviada. Aguarde a liberação.");
+  }
+
+  async function salvarAdmin() {
+    await axios.put(`${API_URL}/api/config`, config);
+    alert("Configuração salva.");
+    carregarConfig();
+  }
+
+  async function marcarSolicitacaoLiberada(id) {
+    await axios.post(`${API_URL}/api/admin/solicitacoes-liberacao/${id}/marcar-liberada`);
+    carregarSolicitacoes();
+  }
+
+  async function desconectarCliente(mac) {
+    await axios.post(`${API_URL}/api/admin/clientes/desconectar`, { mac });
+    carregarClientes();
+  }
+
+  async function limparClientes() {
+    if (!confirm("Desconectar todos os clientes?")) return;
+    await axios.post(`${API_URL}/api/admin/clientes/limpar`);
+    carregarClientes();
+  }
+
+  if (!config) return <main className="loading">Carregando CN WiFi...</main>;
+
+  if (isAdmin && !logado) {
+    return (
+      <main className="login-admin">
+        <section className="login-box">
+          <div className="brand">CN WiFi</div>
+          <h1>Painel Administrativo</h1>
+          <p>Controle premium do seu ponto de internet.</p>
+          <input
+            type="password"
+            placeholder="Senha do administrador"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+          />
+          <button onClick={() => senha === config.senhaAdmin ? setLogado(true) : alert("Senha incorreta.")}>
+            Entrar no painel
+          </button>
+        </section>
+      </main>
+    );
+  }
 
   if (isAdmin) {
-    if (!logado) {
-      return (
-        <main className="container">
-          <section className="card hero">
-            <h1>Admin CN WiFi</h1>
-            <p>Digite a senha do administrador.</p>
-            <input
-              type="password"
-              placeholder="Senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-            />
-            <button
-              className="confirmar"
-              onClick={() => {
-                if (senha === config.senhaAdmin) setLogado(true);
-                else alert("Senha incorreta.");
-              }}
-            >
-              Entrar
-            </button>
-          </section>
-        </main>
-      );
-    }
+    const resumo = dashboard?.resumo || {};
+    const pagamentos = dashboard?.ultimosPagamentos || [];
+    const planosVendidos = dashboard?.planosVendidos || {};
 
     return (
-      <main className="container">
-        <section className="card hero">
-          <h1>Admin CN WiFi</h1>
-          <p>Controle do ponto de internet.</p>
-        </section>
-
-        <section className="card aviso">
-          <h2>Disponibilidade do ponto</h2>
-          <label>Até quando você ficará neste local?</label>
-          <input
-            type="datetime-local"
-            value={config.fimPermanencia || ""}
-            onChange={(e) =>
-              setConfig({ ...config, fimPermanencia: e.target.value })
-            }
-          />
-        </section>
-
-        <section className="card aviso">
-          <h2>Planos ativos</h2>
-          {planosBase.map((plano) => (
-            <label key={plano.id} style={{ display: "block", margin: "10px 0" }}>
-              <input
-                type="checkbox"
-                checked={config.planosAtivos?.includes(plano.id)}
-                onChange={(e) => {
-                  const ativos = new Set(config.planosAtivos || []);
-                  e.target.checked ? ativos.add(plano.id) : ativos.delete(plano.id);
-                  setConfig({ ...config, planosAtivos: [...ativos] });
-                }}
-              />{" "}
-              {plano.nome} -{" "}
-              {plano.preco.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-            </label>
+      <main className="admin-shell">
+        <aside className="sidebar">
+          <div className="logo">CN <span>WiFi</span><small>ADMIN</small></div>
+          {["Dashboard", "Clientes", "Pagamentos", "Solicitações", "Financeiro", "Planos", "Configurações"].map((item, i) => (
+            <button key={item} className={i === 0 ? "nav active" : "nav"}>{item}</button>
           ))}
+          <div className="sidebar-footer">CN WiFi OS v2.0<br />America/Sao_Paulo</div>
+        </aside>
 
-          <button className="confirmar" onClick={salvarAdmin}>
-            Salvar configurações
-          </button>
-        </section>
+        <section className="admin-content">
+          <header className="topbar">
+            <div>
+              <h1>Dashboard</h1>
+              <p>Visão geral do seu ponto de internet</p>
+            </div>
+            <div className="top-actions">
+              <span className="online">● Online</span>
+              <span>{agoraBR}</span>
+              <strong>Administrador</strong>
+            </div>
+          </header>
 
-        <section className="card aviso">
-          <h2>Clientes conectados</h2>
+          <section className="kpi-grid">
+            <div className="kpi blue"><span>Receita hoje</span><strong>{moeda(resumo.receitaHoje)}</strong><small>Pagamentos do dia</small></div>
+            <div className="kpi green"><span>Receita semana</span><strong>{moeda(resumo.receitaSemana)}</strong><small>Últimos 7 dias</small></div>
+            <div className="kpi purple"><span>Receita mês</span><strong>{moeda(resumo.receitaMes)}</strong><small>Mês atual</small></div>
+            <div className="kpi orange"><span>Receita total</span><strong>{moeda(resumo.receitaTotal)}</strong><small>Total acumulado</small></div>
+            <div className="kpi blue"><span>Pagamentos hoje</span><strong>{resumo.pagamentosHoje || 0}</strong><small>Aprovados hoje</small></div>
+            <div className="kpi green"><span>Pagamentos pagos</span><strong>{resumo.pagamentosTotal || 0}</strong><small>Total aprovado</small></div>
+            <div className="kpi purple"><span>Pendentes</span><strong>{resumo.pendentes || 0}</strong><small>Aguardando pagamento</small></div>
+            <div className="kpi cyan"><span>Clientes online</span><strong>{clientes.length}</strong><small>Conectados agora</small></div>
+          </section>
 
-          <button className="confirmar" onClick={carregarDashboard}>
-            Atualizar dashboard
-          </button>
-
-          {dashboard && (
-            <div style={{ marginTop: 16 }}>
-              <h2>Dashboard financeiro</h2>
-              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-                <div className="card"><strong>Receita hoje</strong><p>{moeda(dashboard.resumo.receitaHoje)}</p></div>
-                <div className="card"><strong>Receita semana</strong><p>{moeda(dashboard.resumo.receitaSemana)}</p></div>
-                <div className="card"><strong>Receita mês</strong><p>{moeda(dashboard.resumo.receitaMes)}</p></div>
-                <div className="card"><strong>Receita total</strong><p>{moeda(dashboard.resumo.receitaTotal)}</p></div>
-                <div className="card"><strong>Pagamentos hoje</strong><p>{dashboard.resumo.pagamentosHoje}</p></div>
-                <div className="card"><strong>Pagamentos pagos</strong><p>{dashboard.resumo.pagamentosTotal}</p></div>
-                <div className="card"><strong>Pendentes</strong><p>{dashboard.resumo.pendentes}</p></div>
+          <section className="admin-grid">
+            <div className="panel chart-panel">
+              <div className="panel-head">
+                <h2>Receita dos últimos dias</h2>
+                <button onClick={carregarDashboard}>Atualizar</button>
               </div>
+              <div className="fake-chart">
+                {[25, 38, 28, 55, 40, 80, 60].map((h, i) => (
+                  <div key={i} style={{ height: `${h}%` }}><span>{moeda((h / 10) || 0)}</span></div>
+                ))}
+              </div>
+            </div>
 
-              <h3>Planos vendidos</h3>
-              {Object.entries(dashboard.planosVendidos || {}).map(([nome, qtd]) => (
-                <p key={nome}><strong>{nome}:</strong> {qtd}</p>
-              ))}
+            <div className="panel">
+              <div className="panel-head">
+                <h2>Planos mais vendidos</h2>
+              </div>
+              <div className="plans-ranking">
+                {Object.entries(planosVendidos).length === 0 && <p>Nenhum plano vendido ainda.</p>}
+                {Object.entries(planosVendidos).map(([nome, qtd]) => (
+                  <div key={nome}>
+                    <span>{nome}</span>
+                    <strong>{qtd}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-              <h3>Últimos pagamentos</h3>
-              {(dashboard.ultimosPagamentos || []).slice(0, 15).map((p) => (
-                <div key={p.id} style={{ marginTop: 10, padding: 12, border: "1px solid #243044", borderRadius: 12, textAlign: "left" }}>
-                  <p><strong>ID:</strong> {p.mercado_pago_id}</p>
-                  <p><strong>Plano:</strong> {p.plano_nome}</p>
-                  <p><strong>Valor:</strong> {moeda(p.valor)}</p>
-                  <p><strong>Status:</strong> {p.status}</p>
-                  <p><strong>Criado:</strong> {dataBR(p.criado_em)}</p>
-                  <p><strong>Aprovado:</strong> {dataBR(p.aprovado_em)}</p>
-                  <p><strong>Expira:</strong> {dataBR(p.expira_em)}</p>
+            <div className="panel side-panel">
+              <div className="panel-head">
+                <h2>Clientes conectados</h2>
+                <button onClick={carregarClientes}>Ver</button>
+              </div>
+              {clientes.length === 0 && <p>Nenhum cliente conectado no momento.</p>}
+              {clientes.slice(0, 4).map((c) => (
+                <div className="client-card" key={c.mac}>
+                  <div>
+                    <strong>{c.mac}</strong>
+                    <span>{c.ip || c.address || "-"}</span>
+                  </div>
+                  <button onClick={() => desconectarCliente(c.mac)}>Desconectar</button>
                 </div>
               ))}
             </div>
-          )}
 
-          <button className="confirmar" onClick={carregarClientes}>
-            Atualizar clientes
-          </button>
-
-          <button className="confirmar" onClick={carregarSolicitacoes}>
-            Ver solicitações de liberação
-          </button>
-
-          {solicitacoes.map((sol) => (
-            <div
-              key={sol.id}
-              style={{
-                marginTop: 12,
-                padding: 12,
-                border: "1px solid #243044",
-                borderRadius: 12,
-                textAlign: "left"
-              }}
-            >
-              <p><strong>Solicitação:</strong> #{sol.id}</p>
-              <p><strong>Pagamento:</strong> {sol.pagamento_id}</p>
-              <p><strong>Plano:</strong> {sol.plano_id}</p>
-              <p><strong>Status:</strong> {sol.status}</p>
-              <p><strong>Data:</strong> {new Date(sol.criado_em).toLocaleString("pt-BR")}</p>
-
-              <button
-                className="confirmar"
-                onClick={() => marcarSolicitacaoLiberada(sol.id)}
-              >
-                Marcar como liberada
-              </button>
+            <div className="panel side-panel">
+              <div className="panel-head">
+                <h2>Ações rápidas</h2>
+              </div>
+              <div className="quick-actions">
+                <button onClick={carregarDashboard}>Atualizar dashboard</button>
+                <button onClick={carregarClientes}>Atualizar clientes</button>
+                <button onClick={carregarSolicitacoes}>Ver solicitações</button>
+                <button className="danger" onClick={limparClientes}>Desconectar todos</button>
+              </div>
             </div>
-          ))}
+          </section>
 
-          <button className="confirmar" onClick={limparClientes}>
-            Desconectar todos
-          </button>
-
-          {clientes.length === 0 && (
-            <p>Nenhum cliente conectado.</p>
-          )}
-
-          {clientes.map((cliente) => (
-            <div
-              key={cliente.mac}
-              style={{
-                marginTop: 12,
-                padding: 12,
-                border: "1px solid #243044",
-                borderRadius: 12,
-                textAlign: "left"
-              }}
-            >
-              <p><strong>IP:</strong> {cliente.ip}</p>
-              <p><strong>MAC:</strong> {cliente.mac}</p>
-              <p><strong>Status:</strong> {cliente.state}</p>
-              <p><strong>Início:</strong> {cliente.sessionStart}</p>
-              <p><strong>Fim:</strong> {cliente.sessionEnd}</p>
-              <p><strong>Download:</strong> {cliente.download}</p>
-              <p><strong>Upload:</strong> {cliente.upload}</p>
-
-              <button
-                className="confirmar"
-                onClick={() => desconectarCliente(cliente.mac)}
-              >
-                Expulsar cliente
-              </button>
+          <section className="panel">
+            <div className="panel-head">
+              <h2>Últimos pagamentos</h2>
             </div>
-          ))}
+            <div className="payment-table">
+              <div className="payment-row head">
+                <span>ID</span><span>Plano</span><span>Valor</span><span>Status</span><span>Criado</span><span>Aprovado</span>
+              </div>
+              {pagamentos.slice(0, 12).map((p) => (
+                <div className="payment-row" key={p.id}>
+                  <span>{p.mercado_pago_id}</span>
+                  <span>{p.plano_nome}</span>
+                  <span>{moeda(p.valor)}</span>
+                  <span className={p.status === "approved" ? "badge ok" : "badge wait"}>{p.status}</span>
+                  <span>{dataBR(p.criado_em)}</span>
+                  <span>{dataBR(p.aprovado_em)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="admin-grid bottom">
+            <div className="panel">
+              <h2>Solicitações de liberação</h2>
+              {solicitacoes.length === 0 && <p>Nenhuma solicitação.</p>}
+              {solicitacoes.slice(0, 6).map((s) => (
+                <div className="request-card" key={s.id}>
+                  <div>
+                    <strong>#{s.id} - {s.status}</strong>
+                    <span>Pagamento: {s.pagamento_id}</span>
+                    <span>Plano: {s.plano_id}</span>
+                  </div>
+                  <button onClick={() => marcarSolicitacaoLiberada(s.id)}>Marcar liberada</button>
+                </div>
+              ))}
+            </div>
+
+            <div className="panel">
+              <h2>Configurações rápidas</h2>
+              <label>Disponibilidade do ponto</label>
+              <input
+                type="datetime-local"
+                value={config.fimPermanencia || ""}
+                onChange={(e) => setConfig({ ...config, fimPermanencia: e.target.value })}
+              />
+
+              <div className="plan-toggle">
+                {planosBase.map((plano) => (
+                  <label key={plano.id}>
+                    <input
+                      type="checkbox"
+                      checked={config.planosAtivos?.includes(plano.id)}
+                      onChange={(e) => {
+                        const ativos = new Set(config.planosAtivos || []);
+                        e.target.checked ? ativos.add(plano.id) : ativos.delete(plano.id);
+                        setConfig({ ...config, planosAtivos: [...ativos] });
+                      }}
+                    />
+                    {plano.nome} - {moeda(plano.preco)}
+                  </label>
+                ))}
+              </div>
+
+              <button className="save" onClick={salvarAdmin}>Salvar configurações</button>
+            </div>
+          </section>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="container">
-      <section className="card hero">
-        <h1>CN WiFi</h1>
-        <p>Internet temporária rápida, simples e segura.</p>
+    <main className="client-shell">
+      <section className="client-hero">
+        <div className="client-logo">CN <span>WiFi</span></div>
+        <h1>Internet rápida no caminhão</h1>
+        <p>Escolha um plano, pague no PIX e navegue em segundos.</p>
       </section>
 
       {config.fimPermanencia && (
-        <section className="card aviso">
-          <h2>Disponibilidade</h2>
-          <p>
-            Este ponto ficará disponível até{" "}
-            <strong>{new Date(config.fimPermanencia).toLocaleString("pt-BR")}</strong>.
-          </p>
+        <section className="client-card warning">
+          Disponível até <strong>{dataBR(config.fimPermanencia)}</strong>
         </section>
       )}
 
-      <section className="planos">
-        {planosDisponiveis.map((plano) => (
-          <button
-            key={plano.id}
-            className="plano"
-            disabled={carregando}
-            onClick={() => comprarPlano(plano)}
-          >
-            <span>{plano.nome}</span>
-            <strong>
-              {plano.preco.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-            </strong>
-          </button>
-        ))}
-      </section>
+      {mensagem && <section className="client-card message">{mensagem}</section>}
 
-      {carregando && <section className="card pagamento">Processando...</section>}
+      {!pagamento && (
+        <section className="client-plans">
+          {planosDisponiveis.map((plano) => (
+            <button key={plano.id} disabled={carregando} onClick={() => comprarPlano(plano)}>
+              <span>{plano.nome}</span>
+              <strong>{moeda(plano.preco)}</strong>
+            </button>
+          ))}
+        </section>
+      )}
+
+      {carregando && <section className="client-card">Processando...</section>}
 
       {pagamento && (
-        <section className="card pagamento">
+        <section className="client-card pix-card">
           <h2>Pagamento PIX</h2>
-          <p>Plano: {pagamento.plano.nome}</p>
+          <p>Plano: <strong>{pagamento.plano.nome}</strong></p>
           <p>Status: <strong>{pagamento.status}</strong></p>
-          <p>
-            Valor:{" "}
-            <strong>
-              {pagamento.plano.preco.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-            </strong>
-          </p>
-
-          {pagamento.status === "approved" && (
-            <button className="confirmar" onClick={liberarInternetMikrotik}>
-              Liberar internet agora
-            </button>
-          )}
+          <p>Valor: <strong>{moeda(pagamento.plano.preco)}</strong></p>
 
           {pagamento.status !== "approved" && (
             <>
-              <img
-                className="qr"
-                src={`data:image/png;base64,${pagamento.qrCodeBase64}`}
-                alt="QR Code PIX"
-              />
-
+              <img src={`data:image/png;base64,${pagamento.qrCodeBase64}`} alt="QR Code PIX" />
               <textarea readOnly value={pagamento.qrCode} />
-
-              <button
-                className="confirmar"
-                onClick={() => navigator.clipboard.writeText(pagamento.qrCode)}
-              >
-                Copiar PIX
-              </button>
-
-              <button className="confirmar" onClick={simularLiberacao}>
-                Verificar pagamento e liberar internet
-              </button>
-
-              <button className="confirmar" onClick={solicitarLiberacao}>
-                Já paguei, solicitar liberação
-              </button>
+              <button onClick={() => navigator.clipboard.writeText(pagamento.qrCode)}>Copiar PIX</button>
+              <button onClick={verificarPagamento}>Verificar pagamento</button>
+              <button onClick={solicitarLiberacao}>Já paguei, solicitar liberação</button>
             </>
           )}
 
-          {mensagem && <p><strong>{mensagem}</strong></p>}
+          {pagamento.status === "approved" && (
+            <button onClick={liberarInternetMikrotik}>Liberar internet agora</button>
+          )}
         </section>
       )}
     </main>
