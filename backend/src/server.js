@@ -441,6 +441,51 @@ app.get("/api/admin/dashboard", async (req, res) => {
   }
 });
 
+
+app.get("/api/admin/historico", async (req, res) => {
+  try {
+    const { data: eventos, error: eventosError } = await supabase
+      .from("eventos_sistema")
+      .select("*")
+      .order("id", { ascending: false })
+      .limit(100);
+
+    if (eventosError) return res.status(500).json({ ok: false, erro: eventosError.message });
+
+    const { data: sessoes, error: sessoesError } = await supabase
+      .from("sessoes_clientes")
+      .select("*")
+      .order("id", { ascending: false })
+      .limit(100);
+
+    if (sessoesError) return res.status(500).json({ ok: false, erro: sessoesError.message });
+
+    const agora = new Date();
+    const inicioHoje = new Date(agora); inicioHoje.setHours(0,0,0,0);
+    const inicioSemana = new Date(agora); inicioSemana.setDate(agora.getDate() - 7);
+    const inicioMes = new Date(agora); inicioMes.setDate(1); inicioMes.setHours(0,0,0,0);
+
+    const porData = (lista, campo, data) =>
+      lista.filter(item => new Date(item[campo] || item.criado_em || item.primeiro_acesso) >= data);
+
+    res.json({
+      ok: true,
+      resumo: {
+        dispositivosHoje: porData(sessoes || [], "primeiro_acesso", inicioHoje).length,
+        dispositivosSemana: porData(sessoes || [], "primeiro_acesso", inicioSemana).length,
+        dispositivosMes: porData(sessoes || [], "primeiro_acesso", inicioMes).length,
+        eventosHoje: porData(eventos || [], "criado_em", inicioHoje).length,
+        eventosSemana: porData(eventos || [], "criado_em", inicioSemana).length,
+        eventosMes: porData(eventos || [], "criado_em", inicioMes).length,
+      },
+      eventos: eventos || [],
+      sessoes: sessoes || []
+    });
+  } catch (error) {
+    res.status(500).json({ ok: false, erro: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`CN WiFi Backend Supabase rodando em http://localhost:${PORT}`);
